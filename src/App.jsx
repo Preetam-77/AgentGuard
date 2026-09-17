@@ -16,6 +16,12 @@ function App() {
         <button type="button">Connect Wallet</button>
       </section>
 
+      <section className="limit-card">
+        <h2>Spending Limit</h2>
+        <p className="limit">$20 / day</p>
+        <p>Maximum amount the agent can spend automatically.</p>
+      </section>
+
       <section className="security-card">
         <h2>Security Status</h2>
         <p>Protected</p>

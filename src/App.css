@@ -13,6 +13,7 @@ header h1 {
 }
 
 .wallet-card,
+.limit-card,
 .security-card {
   padding: 28px;
   margin-bottom: 20px;
@@ -23,6 +24,12 @@ header h1 {
 
 .balance {
   font-size: 36px;
+  font-weight: 600;
+  color: var(--text-h);
+}
+
+.limit {
+  font-size: 32px;
   font-weight: 600;
   color: var(--text-h);
 }
