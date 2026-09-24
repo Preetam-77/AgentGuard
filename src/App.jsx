@@ -1,6 +1,9 @@
+import { useState } from 'react'
 import './App.css'
 
 function App() {
+  const [limit, setLimit] = useState(20)
+
   return (
     <main className="dashboard">
       <header>
@@ -18,8 +21,23 @@ function App() {
 
       <section className="limit-card">
         <h2>Spending Limit</h2>
-        <p className="limit">$20 / day</p>
+        <p className="limit">${limit} / day</p>
         <p>Maximum amount the agent can spend automatically.</p>
+
+        <button type="button" onClick={() => setLimit(50)}>
+          Set Limit to $50
+        </button>
+      </section>
+
+      <section className="contracts-card">
+        <h2>Allowed Contracts</h2>
+
+        <ul>
+          <li>Uniswap</li>
+          <li>AgentGuard Treasury</li>
+        </ul>
+
+        <button type="button">Add Contract</button>
       </section>
 
       <section className="security-card">
