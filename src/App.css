@@ -1,41 +1,75 @@
-import { useState } from 'react'
-import './App.css'
-
-function App() {
-  const [limit, setLimit] = useState(20)
-
-  return (
-    <main className="dashboard">
-      <header>
-        <h1>AgentGuard</h1>
-        <p>Security layer for autonomous AI agents</p>
-      </header>
-
-      <section className="wallet-card">
-        <h2>Agent Wallet</h2>
-        <p className="balance">100 USDC</p>
-        <p>Available balance</p>
-
-        <button type="button">Connect Wallet</button>
-      </section>
-
-      <section className="limit-card">
-        <h2>Spending Limit</h2>
-        <p className="limit">${limit} / day</p>
-        <p>Maximum amount the agent can spend automatically.</p>
-
-        <button type="button" onClick={() => setLimit(50)}>
-          Set Limit to $50
-        </button>
-      </section>
-
-      <section className="security-card">
-        <h2>Security Status</h2>
-        <p>Protected</p>
-        <p>Transactions are checked before execution.</p>
-      </section>
-    </main>
-  )
+.dashboard {
+  width: min(900px, 90%);
+  margin: 0 auto;
+  padding: 60px 0;
 }
 
-export default App
+header {
+  margin-bottom: 40px;
+}
+
+header h1 {
+  margin-bottom: 8px;
+}
+
+.wallet-card,
+.limit-card,
+.contracts-card,
+.security-card {
+  padding: 28px;
+  margin-bottom: 20px;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  background: var(--bg);
+}
+
+.balance {
+  font-size: 36px;
+  font-weight: 600;
+  color: var(--text-h);
+}
+
+.limit {
+  font-size: 32px;
+  font-weight: 600;
+  color: var(--text-h);
+}
+
+.wallet-address {
+  font-family: monospace;
+  font-size: 18px;
+}
+
+.contracts-card ul {
+  padding-left: 20px;
+  line-height: 1.8;
+}
+
+.contracts-card input {
+  width: 100%;
+  box-sizing: border-box;
+  margin-top: 16px;
+  padding: 10px 12px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--bg);
+  color: var(--text);
+}
+
+button {
+  margin-top: 20px;
+  padding: 10px 18px;
+  border: none;
+  border-radius: 8px;
+  background: var(--accent);
+  color: white;
+  cursor: pointer;
+}
+
+button:hover {
+  opacity: 0.9;
+}
+
+.status {
+  font-weight: 600;
+}
