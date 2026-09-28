@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { BrowserProvider } from 'ethers'
+import { BrowserProvider, formatEther } from 'ethers'
 import './App.css'
 
 function App() {
@@ -14,6 +14,7 @@ function App() {
 
   const [walletAddress, setWalletAddress] = useState('')
   const [network, setNetwork] = useState('')
+  const [balance, setBalance] = useState('0')
   const [walletConnected, setWalletConnected] = useState(false)
 
   const addContract = () => {
@@ -36,9 +37,13 @@ function App() {
 
       const address = accounts[0]
 
+      const balanceWei = await provider.getBalance(address)
+      const balanceEth = formatEther(balanceWei)
+
       const networkInfo = await provider.getNetwork()
 
       setWalletAddress(address)
+      setBalance(balanceEth)
       setNetwork(networkInfo.name)
       setWalletConnected(true)
     } catch (error) {
@@ -64,12 +69,15 @@ function App() {
             </p>
 
             <p>Network: {network}</p>
-            <p className="balance">100 USDC</p>
+
+            <p className="balance">{balance} ETH</p>
+
             <p>Available balance</p>
           </>
         ) : (
           <>
-            <p className="balance">100 USDC</p>
+            <p className="balance">--</p>
+
             <p>Connect your wallet to continue.</p>
           </>
         )}
