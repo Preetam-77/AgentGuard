@@ -29,4 +29,19 @@ contract AgentGuard {
     {
         return allowedContracts[contractAddress];
     }
+
+    function checkTransaction(
+        uint256 amount,
+        address contractAddress
+    ) external view returns (bool) {
+        if (amount > dailyLimit) {
+            return false;
+        }
+
+        if (!allowedContracts[contractAddress]) {
+            return false;
+        }
+
+        return true;
+    }
 }
