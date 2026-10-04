@@ -1,6 +1,8 @@
 import { useState } from 'react'
-import { BrowserProvider, formatEther } from 'ethers'
+import { BrowserProvider, Contract } from 'ethers'
+import AgentGuardABI from './abi/AgentGuard.json'
 import './App.css'
+const CONTRACT_ADDRESS = '0xd9145CCE52D386f254917e481eB44e9943F39138'
 
 function App() {
   const [limit, setLimit] = useState(20)
@@ -25,32 +27,38 @@ function App() {
   }
 
   const connectWallet = async () => {
-    if (!window.ethereum) {
-      alert('Please install MetaMask first.')
-      return
-    }
-
-    try {
-      const provider = new BrowserProvider(window.ethereum)
-
-      const accounts = await provider.send('eth_requestAccounts', [])
-
-      const address = accounts[0]
-
-      const balanceWei = await provider.getBalance(address)
-      const balanceEth = formatEther(balanceWei)
-
-      const networkInfo = await provider.getNetwork()
-
-      setWalletAddress(address)
-      setBalance(balanceEth)
-      setNetwork(networkInfo.name)
-      setWalletConnected(true)
-    } catch (error) {
-      console.error('Wallet connection failed:', error)
-    }
+  if (!window.ethereum) {
+    alert('Please install MetaMask first.')
+    return
   }
 
+  try {
+    const provider = new BrowserProvider(window.ethereum)
+
+    const accounts = await provider.send('eth_requestAccounts', [])
+
+    const signer = await provider.getSigner()
+
+    const contract = new Contract(
+      CONTRACT_ADDRESS,
+      AgentGuardABI,
+      signer
+    )
+
+    const limit = await contract.dailyLimit()
+
+    const networkInfo = await provider.getNetwork()
+
+    setWalletAddress(accounts[0])
+    setNetwork(networkInfo.name)
+    setLimit(Number(limit))
+    setWalletConnected(true)
+
+    console.log('AgentGuard contract:', contract)
+  } catch (error) {
+    console.error('Wallet connection failed:', error)
+  }
+}
   return (
     <main className="dashboard">
       <header>
