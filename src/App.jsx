@@ -26,7 +26,7 @@ function App() {
     setContractInput('')
   }
 
-  const connectWallet = async () => {
+const connectWallet = async () => {
   if (!window.ethereum) {
     alert('Please install MetaMask first.')
     return
@@ -36,6 +36,14 @@ function App() {
     const provider = new BrowserProvider(window.ethereum)
 
     const accounts = await provider.send('eth_requestAccounts', [])
+    const networkInfo = await provider.getNetwork()
+
+    setWalletAddress(accounts[0])
+    setNetwork(networkInfo.name)
+    setWalletConnected(true)
+
+    console.log('Wallet connected:', accounts[0])
+    console.log('Network:', networkInfo.name)
 
     const signer = await provider.getSigner()
 
@@ -45,18 +53,36 @@ function App() {
       signer
     )
 
-    const limit = await contract.dailyLimit()
+    const dailyLimit = await contract.dailyLimit()
 
-    const networkInfo = await provider.getNetwork()
+    setLimit(Number(dailyLimit))
 
-    setWalletAddress(accounts[0])
-    setNetwork(networkInfo.name)
-    setLimit(Number(limit))
-    setWalletConnected(true)
-
-    console.log('AgentGuard contract:', contract)
+    console.log('Daily limit:', dailyLimit.toString())
   } catch (error) {
-    console.error('Wallet connection failed:', error)
+    console.error('Wallet/contract error:', error)
+  }
+}
+
+const updateDailyLimit = async () => {
+  try {
+    const provider = new BrowserProvider(window.ethereum)
+    const signer = await provider.getSigner()
+
+    const contract = new Contract(
+      CONTRACT_ADDRESS,
+      AgentGuardABI,
+      signer
+    )
+
+    const transaction = await contract.setDailyLimit(50)
+
+    await transaction.wait()
+
+    setLimit(50)
+
+    console.log('Daily limit updated to 50')
+  } catch (error) {
+    console.error('Failed to update daily limit:', error)
   }
 }
   return (
