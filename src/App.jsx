@@ -1,7 +1,8 @@
 import { useState } from 'react'
-import { BrowserProvider, Contract } from 'ethers'
+import { BrowserProvider, Contract, isAddress } from 'ethers'
 import AgentGuardABI from './abi/AgentGuard.json'
 import './App.css'
+
 const CONTRACT_ADDRESS = '0xd9145CCE52D386f254917e481eB44e9943F39138'
 
 function App() {
@@ -19,72 +20,121 @@ function App() {
   const [balance, setBalance] = useState('0')
   const [walletConnected, setWalletConnected] = useState(false)
 
-  const addContract = () => {
-    if (contractInput.trim() === '') return
+  const addContract = async () => {
+    const address = contractInput.trim()
 
-    setContracts([...contracts, contractInput.trim()])
-    setContractInput('')
+    if (!isAddress(address)) {
+      alert('Enter a valid contract address.')
+      return
+    }
+
+    try {
+      const provider = new BrowserProvider(window.ethereum)
+      const signer = await provider.getSigner()
+
+      const contract = new Contract(
+        CONTRACT_ADDRESS,
+        AgentGuardABI,
+        signer
+      )
+
+      const transaction = await contract.addAllowedContract(address)
+
+      await transaction.wait()
+
+      setContracts([...contracts, address])
+      setContractInput('')
+
+      console.log('Contract added:', address)
+    } catch (error) {
+      console.error('Failed to add contract:', error)
+    }
   }
 
-const connectWallet = async () => {
-  if (!window.ethereum) {
-    alert('Please install MetaMask first.')
-    return
+  const connectWallet = async () => {
+    if (!window.ethereum) {
+      alert('Please install MetaMask first.')
+      return
+    }
+
+    try {
+      const provider = new BrowserProvider(window.ethereum)
+
+      const accounts = await provider.send('eth_requestAccounts', [])
+      const networkInfo = await provider.getNetwork()
+
+      setWalletAddress(accounts[0])
+      setNetwork(networkInfo.name)
+      setWalletConnected(true)
+
+      console.log('Wallet connected:', accounts[0])
+      console.log('Network:', networkInfo.name)
+
+      const signer = await provider.getSigner()
+
+      const contract = new Contract(
+        CONTRACT_ADDRESS,
+        AgentGuardABI,
+        signer
+      )
+
+      const dailyLimit = await contract.dailyLimit()
+
+      setLimit(Number(dailyLimit))
+
+      console.log('Daily limit:', dailyLimit.toString())
+    } catch (error) {
+      console.error('Wallet/contract error:', error)
+    }
   }
 
-  try {
-    const provider = new BrowserProvider(window.ethereum)
+  const updateDailyLimit = async () => {
+    try {
+      const provider = new BrowserProvider(window.ethereum)
+      const signer = await provider.getSigner()
 
-    const accounts = await provider.send('eth_requestAccounts', [])
-    const networkInfo = await provider.getNetwork()
+      const contract = new Contract(
+        CONTRACT_ADDRESS,
+        AgentGuardABI,
+        signer
+      )
 
-    setWalletAddress(accounts[0])
-    setNetwork(networkInfo.name)
-    setWalletConnected(true)
+      const transaction = await contract.setDailyLimit(50)
 
-    console.log('Wallet connected:', accounts[0])
-    console.log('Network:', networkInfo.name)
+      await transaction.wait()
 
-    const signer = await provider.getSigner()
+      setLimit(50)
 
-    const contract = new Contract(
-      CONTRACT_ADDRESS,
-      AgentGuardABI,
-      signer
-    )
-
-    const dailyLimit = await contract.dailyLimit()
-
-    setLimit(Number(dailyLimit))
-
-    console.log('Daily limit:', dailyLimit.toString())
-  } catch (error) {
-    console.error('Wallet/contract error:', error)
+      console.log('Daily limit updated to 50')
+    } catch (error) {
+      console.error('Failed to update daily limit:', error)
+    }
   }
-}
 
-const updateDailyLimit = async () => {
-  try {
-    const provider = new BrowserProvider(window.ethereum)
-    const signer = await provider.getSigner()
+  const checkTransaction = async (amount, contractAddress) => {
+    try {
+      const provider = new BrowserProvider(window.ethereum)
 
-    const contract = new Contract(
-      CONTRACT_ADDRESS,
-      AgentGuardABI,
-      signer
-    )
+      const contract = new Contract(
+        CONTRACT_ADDRESS,
+        AgentGuardABI,
+        provider
+      )
 
-    const transaction = await contract.setDailyLimit(50)
+      const allowed = await contract.checkTransaction(
+        amount,
+        contractAddress
+      )
 
-    await transaction.wait()
+      console.log('Transaction allowed:', allowed)
 
-    setLimit(50)
-
-    console.log('Daily limit updated to 50')
-  } catch (error) {
-    console.error('Failed to update daily limit:', error)
+      return allowed
+    } catch (error) {
+      console.error('Security check failed:', error)
+      return false
+    }
   }
-}
+
   return (
     <main className="dashboard">
       <header>
@@ -130,7 +180,7 @@ const updateDailyLimit = async () => {
           Maximum amount the agent can spend automatically.
         </p>
 
-        <button type="button" onClick={() => setLimit(50)}>
+        <button type="button" onClick={updateDailyLimit}>
           Set Limit to $50
         </button>
       </section>
@@ -148,7 +198,7 @@ const updateDailyLimit = async () => {
           type="text"
           value={contractInput}
           onChange={(event) => setContractInput(event.target.value)}
-          placeholder="Enter contract name or address"
+          placeholder="Enter contract address"
         />
 
         <button type="button" onClick={addContract}>
