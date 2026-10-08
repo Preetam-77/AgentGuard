@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { BrowserProvider, Contract } from 'ethers'
+import { BrowserProvider, Contract, isAddress } from 'ethers'
 import AgentGuardABI from './abi/AgentGuard.json'
 import './App.css'
 const CONTRACT_ADDRESS = '0xd9145CCE52D386f254917e481eB44e9943F39138'
@@ -19,14 +19,41 @@ function App() {
   const [balance, setBalance] = useState('0')
   const [walletConnected, setWalletConnected] = useState(false)
 
-  const addContract = () => {
-    if (contractInput.trim() === '') return
+ const addContract = async () => {
+  const address = contractInput.trim()
 
-    setContracts([...contracts, contractInput.trim()])
-    setContractInput('')
+  if (!isAddress(address)) {
+    alert('Enter a valid contract address.')
+    return
   }
 
+<<<<<<< Updated upstream
   const connectWallet = async () => {
+=======
+  try {
+    const provider = new BrowserProvider(window.ethereum)
+    const signer = await provider.getSigner()
+
+    const contract = new Contract(
+      CONTRACT_ADDRESS,
+      AgentGuardABI,
+      signer
+    )
+
+    const transaction = await contract.addAllowedContract(address)
+
+    await transaction.wait()
+
+    setContracts([...contracts, address])
+    setContractInput('')
+
+    console.log('Contract added:', address)
+  } catch (error) {
+    console.error('Failed to add contract:', error)
+  }
+}
+const connectWallet = async () => {
+>>>>>>> Stashed changes
   if (!window.ethereum) {
     alert('Please install MetaMask first.')
     return
@@ -56,9 +83,75 @@ function App() {
 
     console.log('AgentGuard contract:', contract)
   } catch (error) {
+<<<<<<< Updated upstream
     console.error('Wallet connection failed:', error)
+=======
+    console.error('Wallet/contract error:', error)
   }
+
+  const addContract = () => {
+  if (contractInput.trim() === '') return
+
+  setContracts([...contracts, contractInput.trim()])
+  setContractInput('')
 }
+}
+
+const updateDailyLimit = async () => {
+  try {
+    console.log('Set Limit button clicked')
+
+    const provider = new BrowserProvider(window.ethereum)
+    const signer = await provider.getSigner()
+
+    console.log('Wallet:', await signer.getAddress())
+    console.log('Contract:', CONTRACT_ADDRESS)
+
+    const contract = new Contract(
+      CONTRACT_ADDRESS,
+      AgentGuardABI,
+      signer
+    )
+
+    const transaction = await contract.setDailyLimit(50)
+
+    console.log('Transaction sent:', transaction.hash)
+
+    await transaction.wait()
+
+    setLimit(50)
+
+    console.log('Daily limit updated to 50')
+  } catch (error) {
+    console.error('Failed to update daily limit:', error)
+>>>>>>> Stashed changes
+  }
+
+const checkTransaction = async (amount, contractAddress) => {
+  try {
+    const provider = new BrowserProvider(window.ethereum)
+    const contract = new Contract(
+      CONTRACT_ADDRESS,
+      AgentGuardABI,
+      provider
+    )
+
+    const allowed = await contract.checkTransaction(
+      amount,
+      contractAddress
+    )
+
+    console.log('Transaction allowed:', allowed)
+
+    return allowed
+  } catch (error) {
+    console.error('Security check failed:', error)
+    return false
+  }
+}  
+}
+
+
   return (
     <main className="dashboard">
       <header>
@@ -104,9 +197,9 @@ function App() {
           Maximum amount the agent can spend automatically.
         </p>
 
-        <button type="button" onClick={() => setLimit(50)}>
-          Set Limit to $50
-        </button>
+       <button type="button" onClick={updateDailyLimit}>
+  Set Limit to $50
+</button>
       </section>
 
       <section className="contracts-card">
@@ -122,7 +215,7 @@ function App() {
           type="text"
           value={contractInput}
           onChange={(event) => setContractInput(event.target.value)}
-          placeholder="Enter contract name or address"
+          placeholder="Enter contract name "
         />
 
         <button type="button" onClick={addContract}>
