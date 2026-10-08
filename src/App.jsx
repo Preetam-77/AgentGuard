@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { BrowserProvider, Contract, isAddress } from 'ethers'
 import AgentGuardABI from './abi/AgentGuard.json'
 import './App.css'
+
 const CONTRACT_ADDRESS = '0xd9145CCE52D386f254917e481eB44e9943F39138'
 
 function App() {
@@ -19,138 +20,120 @@ function App() {
   const [balance, setBalance] = useState('0')
   const [walletConnected, setWalletConnected] = useState(false)
 
- const addContract = async () => {
-  const address = contractInput.trim()
+  const addContract = async () => {
+    const address = contractInput.trim()
 
-  if (!isAddress(address)) {
-    alert('Enter a valid contract address.')
-    return
+    if (!isAddress(address)) {
+      alert('Enter a valid contract address.')
+      return
+    }
+
+    try {
+      const provider = new BrowserProvider(window.ethereum)
+      const signer = await provider.getSigner()
+
+      const contract = new Contract(
+        CONTRACT_ADDRESS,
+        AgentGuardABI,
+        signer
+      )
+
+      const transaction = await contract.addAllowedContract(address)
+
+      await transaction.wait()
+
+      setContracts([...contracts, address])
+      setContractInput('')
+
+      console.log('Contract added:', address)
+    } catch (error) {
+      console.error('Failed to add contract:', error)
+    }
   }
 
-<<<<<<< Updated upstream
   const connectWallet = async () => {
-=======
-  try {
-    const provider = new BrowserProvider(window.ethereum)
-    const signer = await provider.getSigner()
+    if (!window.ethereum) {
+      alert('Please install MetaMask first.')
+      return
+    }
 
-    const contract = new Contract(
-      CONTRACT_ADDRESS,
-      AgentGuardABI,
-      signer
-    )
+    try {
+      const provider = new BrowserProvider(window.ethereum)
 
-    const transaction = await contract.addAllowedContract(address)
+      const accounts = await provider.send('eth_requestAccounts', [])
+      const networkInfo = await provider.getNetwork()
 
-    await transaction.wait()
+      setWalletAddress(accounts[0])
+      setNetwork(networkInfo.name)
+      setWalletConnected(true)
 
-    setContracts([...contracts, address])
-    setContractInput('')
+      console.log('Wallet connected:', accounts[0])
+      console.log('Network:', networkInfo.name)
 
-    console.log('Contract added:', address)
-  } catch (error) {
-    console.error('Failed to add contract:', error)
-  }
-}
-const connectWallet = async () => {
->>>>>>> Stashed changes
-  if (!window.ethereum) {
-    alert('Please install MetaMask first.')
-    return
-  }
+      const signer = await provider.getSigner()
 
-  try {
-    const provider = new BrowserProvider(window.ethereum)
+      const contract = new Contract(
+        CONTRACT_ADDRESS,
+        AgentGuardABI,
+        signer
+      )
 
-    const accounts = await provider.send('eth_requestAccounts', [])
+      const dailyLimit = await contract.dailyLimit()
 
-    const signer = await provider.getSigner()
+      setLimit(Number(dailyLimit))
 
-    const contract = new Contract(
-      CONTRACT_ADDRESS,
-      AgentGuardABI,
-      signer
-    )
-
-    const limit = await contract.dailyLimit()
-
-    const networkInfo = await provider.getNetwork()
-
-    setWalletAddress(accounts[0])
-    setNetwork(networkInfo.name)
-    setLimit(Number(limit))
-    setWalletConnected(true)
-
-    console.log('AgentGuard contract:', contract)
-  } catch (error) {
-<<<<<<< Updated upstream
-    console.error('Wallet connection failed:', error)
-=======
-    console.error('Wallet/contract error:', error)
+      console.log('Daily limit:', dailyLimit.toString())
+    } catch (error) {
+      console.error('Wallet/contract error:', error)
+    }
   }
 
-  const addContract = () => {
-  if (contractInput.trim() === '') return
+  const updateDailyLimit = async () => {
+    try {
+      const provider = new BrowserProvider(window.ethereum)
+      const signer = await provider.getSigner()
 
-  setContracts([...contracts, contractInput.trim()])
-  setContractInput('')
-}
-}
+      const contract = new Contract(
+        CONTRACT_ADDRESS,
+        AgentGuardABI,
+        signer
+      )
 
-const updateDailyLimit = async () => {
-  try {
-    console.log('Set Limit button clicked')
+      const transaction = await contract.setDailyLimit(50)
 
-    const provider = new BrowserProvider(window.ethereum)
-    const signer = await provider.getSigner()
+      await transaction.wait()
 
-    console.log('Wallet:', await signer.getAddress())
-    console.log('Contract:', CONTRACT_ADDRESS)
+      setLimit(50)
 
-    const contract = new Contract(
-      CONTRACT_ADDRESS,
-      AgentGuardABI,
-      signer
-    )
-
-    const transaction = await contract.setDailyLimit(50)
-
-    console.log('Transaction sent:', transaction.hash)
-
-    await transaction.wait()
-
-    setLimit(50)
-
-    console.log('Daily limit updated to 50')
-  } catch (error) {
-    console.error('Failed to update daily limit:', error)
->>>>>>> Stashed changes
+      console.log('Daily limit updated to 50')
+    } catch (error) {
+      console.error('Failed to update daily limit:', error)
+    }
   }
 
-const checkTransaction = async (amount, contractAddress) => {
-  try {
-    const provider = new BrowserProvider(window.ethereum)
-    const contract = new Contract(
-      CONTRACT_ADDRESS,
-      AgentGuardABI,
-      provider
-    )
+  const checkTransaction = async (amount, contractAddress) => {
+    try {
+      const provider = new BrowserProvider(window.ethereum)
 
-    const allowed = await contract.checkTransaction(
-      amount,
-      contractAddress
-    )
+      const contract = new Contract(
+        CONTRACT_ADDRESS,
+        AgentGuardABI,
+        provider
+      )
 
-    console.log('Transaction allowed:', allowed)
+      const allowed = await contract.checkTransaction(
+        amount,
+        contractAddress
+      )
 
-    return allowed
-  } catch (error) {
-    console.error('Security check failed:', error)
-    return false
+      console.log('Transaction allowed:', allowed)
+
+      return allowed
+    } catch (error) {
+      console.error('Security check failed:', error)
+      return false
+    }
   }
-}  
-}
-
 
   return (
     <main className="dashboard">
@@ -197,9 +180,9 @@ const checkTransaction = async (amount, contractAddress) => {
           Maximum amount the agent can spend automatically.
         </p>
 
-       <button type="button" onClick={updateDailyLimit}>
-  Set Limit to $50
-</button>
+        <button type="button" onClick={updateDailyLimit}>
+          Set Limit to $50
+        </button>
       </section>
 
       <section className="contracts-card">
@@ -215,7 +198,7 @@ const checkTransaction = async (amount, contractAddress) => {
           type="text"
           value={contractInput}
           onChange={(event) => setContractInput(event.target.value)}
-          placeholder="Enter contract name "
+          placeholder="Enter contract address"
         />
 
         <button type="button" onClick={addContract}>
