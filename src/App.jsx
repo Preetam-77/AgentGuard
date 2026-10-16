@@ -1,4 +1,3 @@
-
 import { useState } from 'react'
 import { BrowserProvider, Contract, isAddress } from 'ethers'
 import AgentGuardABI from './abi/AgentGuard.json'
@@ -25,6 +24,10 @@ function App() {
   const [securityResult, setSecurityResult] = useState('')
   const [isChecking, setIsChecking] = useState(false)
 
+  // NEW FEATURE: State for Emergency Pause / Kill Switch
+  const [isPaused, setIsPaused] = useState(false)
+  const [isPausing, setIsPausing] = useState(false)
+
   const connectWallet = async () => {
     if (!window.ethereum) {
       alert('Please install MetaMask first.')
@@ -48,6 +51,14 @@ function App() {
 
       const dailyLimit = await contract.dailyLimit()
       setLimit(Number(dailyLimit))
+
+      // Check if contract has a paused status method (e.g., paused() or similar OpenZeppelin standard)
+      try {
+        const pausedStatus = await contract.paused()
+        setIsPaused(pausedStatus)
+      } catch (e) {
+        console.log('Paused check not supported by this ABI version', e)
+      }
 
       console.log('Wallet connected:', accounts[0])
       console.log('Network:', networkInfo.name)
@@ -118,8 +129,41 @@ function App() {
     }
   }
 
-  // Read the smart contract's security decision.
-  // This function does not send a transaction or spend funds.
+  // NEW FEATURE: Toggle Emergency Pause / Unpause
+  const toggleEmergencyPause = async () => {
+    if (!window.ethereum) {
+      alert('Please install MetaMask first.')
+      return
+    }
+
+    setIsPausing(true)
+    try {
+      const provider = new BrowserProvider(window.ethereum)
+      const signer = await provider.getSigner()
+
+      const contract = new Contract(
+        CONTRACT_ADDRESS,
+        AgentGuardABI,
+        signer
+      )
+
+      // Assuming standard OpenZeppelin pause/unpause function names
+      const transaction = isPaused 
+        ? await contract.unpause() 
+        : await contract.pause()
+      
+      await transaction.wait()
+
+      setIsPaused(!isPaused)
+      console.log(isPaused ? 'Contract unpaused' : 'Contract emergency paused!')
+    } catch (error) {
+      console.error('Failed to toggle emergency pause:', error)
+      alert('Failed to execute emergency switch. Ensure you have admin/owner permissions.')
+    } finally {
+      setIsPausing(false)
+    }
+  }
+
   const checkTransaction = async (amount, destination) => {
     if (!window.ethereum) {
       throw new Error('MetaMask is not available.')
@@ -186,6 +230,28 @@ function App() {
         <h1>AgentGuard</h1>
         <p>Security layer for autonomous AI agents</p>
       </header>
+
+      {/* NEW FEATURE: Emergency Kill Switch Card */}
+      <section className={`emergency-card ${isPaused ? 'paused-state' : ''}`}>
+        <h2>🚨 Emergency Kill Switch</h2>
+        <p>
+          {isPaused 
+            ? 'Contract is currently PAUSED. All agent transactions are frozen.' 
+            : 'Instantly freeze all AI agent actions in case of suspicious behavior.'}
+        </p>
+        <button 
+          type="button" 
+          className={isPaused ? 'unpause-btn' : 'pause-btn'}
+          onClick={toggleEmergencyPause}
+          disabled={isPausing || !walletConnected}
+        >
+          {isPausing 
+            ? 'Processing...' 
+            : isPaused 
+              ? 'Unpause Contract' 
+              : 'EMERGENCY PAUSE'}
+        </button>
+      </section>
 
       <section className="wallet-card">
         <h2>Agent Wallet</h2>
