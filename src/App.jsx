@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { BrowserProvider, Contract, isAddress } from 'ethers'
+import { BrowserProvider, Contract,formatEther, isAddress } from 'ethers'
 import AgentGuardABI from './abi/AgentGuard.json'
 import './App.css'
 
@@ -15,7 +15,7 @@ function App() {
   const [contractInput, setContractInput] = useState('')
   const [walletAddress, setWalletAddress] = useState('')
   const [network, setNetwork] = useState('')
-  const [balance] = useState('0')
+  const [balance, setBalance] = useState('0')
   const [walletConnected, setWalletConnected] = useState(false)
 
   // State for the transaction security check
@@ -42,6 +42,8 @@ function App() {
       setWalletAddress(accounts[0])
       setNetwork(networkInfo.name)
       setWalletConnected(true)
+      const ethBalance = await provider.getBalance(accounts[0])
+setBalance(Number(formatEther(ethBalance)).toFixed(4))
 
       const contract = new Contract(
         CONTRACT_ADDRESS,
