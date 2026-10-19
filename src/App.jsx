@@ -1,5 +1,11 @@
+
 import { useState } from 'react'
-import { BrowserProvider, Contract,formatEther, isAddress } from 'ethers'
+import {
+  BrowserProvider,
+  Contract,
+  formatEther,
+  isAddress,
+} from 'ethers'
 import AgentGuardABI from './abi/AgentGuard.json'
 import './App.css'
 
@@ -7,6 +13,7 @@ const CONTRACT_ADDRESS = '0xd9145CCE52D386f254917e481eB44e9943F39138'
 
 function App() {
   const [limit, setLimit] = useState(20)
+
   const [contracts, setContracts] = useState([
     'Uniswap',
     'AgentGuard Treasury',
@@ -18,16 +25,14 @@ function App() {
   const [balance, setBalance] = useState('0')
   const [walletConnected, setWalletConnected] = useState(false)
 
-  // State for the transaction security check
+  const [isRefreshingBalance, setIsRefreshingBalance] = useState(false)
+
   const [testAmount, setTestAmount] = useState('10')
   const [testDestination, setTestDestination] = useState('')
   const [securityResult, setSecurityResult] = useState('')
   const [isChecking, setIsChecking] = useState(false)
 
-  // NEW FEATURE: State for Emergency Pause / Kill Switch
-  const [isPaused, setIsPaused] = useState(false)
-  const [isPausing, setIsPausing] = useState(false)
-
+  // Connect MetaMask and load the wallet balance.
   const connectWallet = async () => {
     if (!window.ethereum) {
       alert('Please install MetaMask first.')
@@ -37,13 +42,20 @@ function App() {
     try {
       const provider = new BrowserProvider(window.ethereum)
       const accounts = await provider.send('eth_requestAccounts', [])
+
+      if (!accounts.length) {
+        throw new Error('No wallet account was selected.')
+      }
+
+      const account = accounts[0]
       const networkInfo = await provider.getNetwork()
 
-      setWalletAddress(accounts[0])
+      setWalletAddress(account)
       setNetwork(networkInfo.name)
       setWalletConnected(true)
-      const ethBalance = await provider.getBalance(accounts[0])
-setBalance(Number(formatEther(ethBalance)).toFixed(4))
+
+      const ethBalance = await provider.getBalance(account)
+      setBalance(Number(formatEther(ethBalance)).toFixed(4))
 
       const contract = new Contract(
         CONTRACT_ADDRESS,
@@ -54,22 +66,47 @@ setBalance(Number(formatEther(ethBalance)).toFixed(4))
       const dailyLimit = await contract.dailyLimit()
       setLimit(Number(dailyLimit))
 
-      // Check if contract has a paused status method (e.g., paused() or similar OpenZeppelin standard)
-      try {
-        const pausedStatus = await contract.paused()
-        setIsPaused(pausedStatus)
-      } catch (e) {
-        console.log('Paused check not supported by this ABI version', e)
-      }
-
-      console.log('Wallet connected:', accounts[0])
+      console.log('Wallet connected:', account)
       console.log('Network:', networkInfo.name)
-      console.log('Daily limit:', dailyLimit.toString())
+      console.log('Balance:', formatEther(ethBalance), 'ETH')
     } catch (error) {
       console.error('Wallet connection failed:', error)
     }
   }
 
+  // Refresh the balance without reconnecting the wallet.
+  const refreshBalance = async () => {
+    if (!window.ethereum || !walletAddress) {
+      return
+    }
+
+    setIsRefreshingBalance(true)
+
+    try {
+      const provider = new BrowserProvider(window.ethereum)
+      const accounts = await provider.send('eth_accounts', [])
+
+      if (!accounts.length) {
+        throw new Error('No connected wallet account found.')
+      }
+
+      const account = accounts[0]
+      const networkInfo = await provider.getNetwork()
+      const ethBalance = await provider.getBalance(account)
+
+      setWalletAddress(account)
+      setNetwork(networkInfo.name)
+      setBalance(Number(formatEther(ethBalance)).toFixed(4))
+
+      console.log('Wallet balance refreshed:', formatEther(ethBalance))
+    } catch (error) {
+      console.error('Failed to refresh balance:', error)
+    } finally {
+      setIsRefreshingBalance(false)
+    }
+  }
+
+  // Add an allowed contract to the smart contract.
   const addContract = async () => {
     const address = contractInput.trim()
 
@@ -105,6 +142,7 @@ setBalance(Number(formatEther(ethBalance)).toFixed(4))
     }
   }
 
+  // Update the on-chain daily limit.
   const updateDailyLimit = async () => {
     if (!window.ethereum) {
       alert('Please install MetaMask first.')
@@ -131,41 +169,7 @@ setBalance(Number(formatEther(ethBalance)).toFixed(4))
     }
   }
 
-  // NEW FEATURE: Toggle Emergency Pause / Unpause
-  const toggleEmergencyPause = async () => {
-    if (!window.ethereum) {
-      alert('Please install MetaMask first.')
-      return
-    }
-
-    setIsPausing(true)
-    try {
-      const provider = new BrowserProvider(window.ethereum)
-      const signer = await provider.getSigner()
-
-      const contract = new Contract(
-        CONTRACT_ADDRESS,
-        AgentGuardABI,
-        signer
-      )
-
-      // Assuming standard OpenZeppelin pause/unpause function names
-      const transaction = isPaused 
-        ? await contract.unpause() 
-        : await contract.pause()
-      
-      await transaction.wait()
-
-      setIsPaused(!isPaused)
-      console.log(isPaused ? 'Contract unpaused' : 'Contract emergency paused!')
-    } catch (error) {
-      console.error('Failed to toggle emergency pause:', error)
-      alert('Failed to execute emergency switch. Ensure you have admin/owner permissions.')
-    } finally {
-      setIsPausing(false)
-    }
-  }
-
+  // Read the smart contract's transaction security decision.
   const checkTransaction = async (amount, destination) => {
     if (!window.ethereum) {
       throw new Error('MetaMask is not available.')
@@ -185,6 +189,7 @@ setBalance(Number(formatEther(ethBalance)).toFixed(4))
     )
   }
 
+  // Validate inputs and show the security decision.
   const runSecurityCheck = async () => {
     setSecurityResult('')
 
@@ -218,6 +223,7 @@ setBalance(Number(formatEther(ethBalance)).toFixed(4))
       )
     } catch (error) {
       console.error('Security check failed:', error)
+
       setSecurityResult(
         'Could not complete the check. Verify the contract address, network, and ABI.'
       )
@@ -233,28 +239,6 @@ setBalance(Number(formatEther(ethBalance)).toFixed(4))
         <p>Security layer for autonomous AI agents</p>
       </header>
 
-      {/* NEW FEATURE: Emergency Kill Switch Card */}
-      <section className={`emergency-card ${isPaused ? 'paused-state' : ''}`}>
-        <h2>🚨 Emergency Kill Switch</h2>
-        <p>
-          {isPaused 
-            ? 'Contract is currently PAUSED. All agent transactions are frozen.' 
-            : 'Instantly freeze all AI agent actions in case of suspicious behavior.'}
-        </p>
-        <button 
-          type="button" 
-          className={isPaused ? 'unpause-btn' : 'pause-btn'}
-          onClick={toggleEmergencyPause}
-          disabled={isPausing || !walletConnected}
-        >
-          {isPausing 
-            ? 'Processing...' 
-            : isPaused 
-              ? 'Unpause Contract' 
-              : 'EMERGENCY PAUSE'}
-        </button>
-      </section>
-
       <section className="wallet-card">
         <h2>Agent Wallet</h2>
 
@@ -264,8 +248,11 @@ setBalance(Number(formatEther(ethBalance)).toFixed(4))
               {walletAddress.slice(0, 6)}...
               {walletAddress.slice(-4)}
             </p>
+
             <p>Network: {network}</p>
+
             <p className="balance">{balance} ETH</p>
+
             <p>Available balance</p>
           </>
         ) : (
@@ -278,11 +265,21 @@ setBalance(Number(formatEther(ethBalance)).toFixed(4))
         <button type="button" onClick={connectWallet}>
           {walletConnected ? 'Wallet Connected' : 'Connect Wallet'}
         </button>
+
+        <button
+          type="button"
+          onClick={refreshBalance}
+          disabled={!walletConnected || isRefreshingBalance}
+        >
+          {isRefreshingBalance ? 'Refreshing...' : 'Refresh Balance'}
+        </button>
       </section>
 
       <section className="limit-card">
         <h2>Spending Limit</h2>
+
         <p className="limit">{limit} units / day</p>
+
         <p>Maximum amount the agent can spend automatically.</p>
 
         <button type="button" onClick={updateDailyLimit}>
@@ -319,7 +316,10 @@ setBalance(Number(formatEther(ethBalance)).toFixed(4))
           This check does not send funds.
         </p>
 
-        <label htmlFor="test-amount">Amount (whole-number units)</label>
+        <label htmlFor="test-amount">
+          Amount (whole-number units)
+        </label>
+
         <input
           id="test-amount"
           type="number"
@@ -330,7 +330,10 @@ setBalance(Number(formatEther(ethBalance)).toFixed(4))
           placeholder="Enter amount"
         />
 
-        <label htmlFor="test-destination">Destination contract address</label>
+        <label htmlFor="test-destination">
+          Destination contract address
+        </label>
+
         <input
           id="test-destination"
           type="text"
@@ -354,10 +357,14 @@ setBalance(Number(formatEther(ethBalance)).toFixed(4))
         <hr />
 
         <h2>Security Status</h2>
+
         <p className="status">
           {walletConnected ? 'Wallet Connected' : 'Wallet not connected'}
         </p>
-        <p>Transactions can be checked against the contract's configured rules.</p>
+
+        <p>
+          Transactions can be checked against the contract's configured rules.
+        </p>
       </section>
     </main>
   )
